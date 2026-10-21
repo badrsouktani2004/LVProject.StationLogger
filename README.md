@@ -96,3 +96,36 @@ public struct ErrorCluster
         Source = string.Empty
     };
 }
+```
+Chaque service commence par vérifier l'état entrant (if (errorIn.Status) return errorIn;), court-circuitant l'exécution en cas d'anomalie pour empêcher tout plantage critique.
+
+2. Le moteur de transformation HTML (XmlToHtmlTransformer.cs)
+Assure la fusion entre les données XML et la feuille de style XSLT. Un soin particulier a été apporté à la libération des ressources dans le bloc finally (fermeture des XmlReader, XmlWriter et flush des flux disque) pour éviter tout verrouillage de fichier.
+
+3. La sécurité et le débogage interne (Logger.cs)
+En cas d'exception non gérée au sein même des services, un fichier de log textuel silencieux est alimenté à l'emplacement C:\Temp\StationLogger_DebugLog.txt :
+
+Rôle : Tracer les pannes internes de la DLL sans perturber ni faire crasher le moteur TestStand.
+
+Guide d'Intégration dans TestStand
+L'intégration du module s'effectue de manière transparente à l'aide des mécanismes de rappel (Callbacks) natifs de TestStand :
+
+Compiler la solution pour générer la DLL LVProject.StationLogger.dll.
+
+S'assurer que le dossier Resources contenant le fichier StyleSheet.xsl est présent dans le répertoire de la DLL.
+
+Ouvrir TestStand et charger le fichier de configuration globale des rappels : StationCallbacks.seq.
+
+Localiser la séquence StationPostStepRuntimeError (déclenchée automatiquement en cas d'erreur d'exécution).
+
+Dans le groupe Main, insérer une étape de type Action configurée en appel .NET (.N).
+
+Pointer l'appel vers la méthode d'orchestration :
+
+Assembly : LVProject.StationLogger.dll
+
+Class : LVProject.StationLogger.Core.XmlLogger
+
+Method : Execute
+
+Transmettre le contexte actuel de la station (ThisContext) ainsi que les paramètres de chemin et de nom d'étape requis.
